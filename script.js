@@ -2,98 +2,128 @@ const cartItems = document.getElementById("cart-items");
 const totalDisplay = document.getElementById("total");
 const favoriteItems = document.getElementById("favorite-items");
 
-// Sample cart items (replace with actual data fetching logic)
-const items = [
-    { name: "Product 1", price: 19.99, quantity: 1, liked: false },
-    { name: "Product 2", price: 9.99, quantity: 2, liked: false },
-    // ... your actual product data
-];
-
-// Function to render the entire cart
-function renderCart() {
-    cartItems.innerHTML = ""; // Clear previous items
-    let total = 0;
-
-    items.forEach((item, index) => {
-        // Create a new item element
-        const itemElement = document.createElement("div");
-        itemElement.classList.add("item");
-
-        // Set the item's HTML content (including dynamic values)
-        itemElement.innerHTML = `
-            <div class="name">${item.name}</div>
-            <div class="price">${item.price.toFixed(2)} DH</div>
-            <div class="quantity">
-                <button class="btn minus">-</button>
-                ${item.quantity}
-                <button class="btn plus">+</button>
-            </div>
-            <i class="like-btn fas fa-heart ${item.liked ? "liked" : ""}"></i>
-            <button class="delete-btn">Delete</button>
-        `;
-
-        // Calculate total price
-        total += item.price * item.quantity;
-
-        // Get references to the buttons within this item
-        const minusBtn = itemElement.querySelector(".minus");
-        const plusBtn = itemElement.querySelector(".plus");
-        const likeBtn = itemElement.querySelector(".like-btn");
-        const deleteBtn = itemElement.querySelector(".delete-btn");
-
-        // Event listeners for button clicks
-        minusBtn.addEventListener("click", () => {
-            if (item.quantity > 1) {
-                item.quantity--;
-                renderCart(); // Re-render after changes
-            }
-        });
-
-        plusBtn.addEventListener("click", () => {
-            item.quantity++;
-            renderCart();
-        });
-
-        likeBtn.addEventListener("click", () => {
-            item.liked = !item.liked; // Toggle liked status
-            renderCart(); // Re-render after changes
-        });
-
-        deleteBtn.addEventListener("click", () => {
-            items.splice(index, 1); // Remove item from array
-            renderCart();
-        });
-
-        cartItems.appendChild(itemElement); // Add item to the cart
-    });
-
-    // Update total price display
-    totalDisplay.textContent = `Total: ${total.toFixed(2)} DH`;
-
-    // Render favorite items
-    renderFavorites();
+// Product class
+class Product {
+  constructor(id, name, price) {
+    this.id = id;
+    this.name = name;
+    this.price = price;
+  }
 }
 
-// Function to render favorite items
-function renderFavorites() {
+// ShoppingCartItem class
+class ShoppingCartItem {
+  constructor(product, quantity = 1) {
+    this.product = product;
+    this.quantity = quantity;
+  }
+
+  getTotalPrice() {
+    return this.product.price * this.quantity;
+  }
+}
+
+// ShoppingCart class
+class ShoppingCart {
+  constructor() {
+    this.items = [];
+  }
+
+  addItem(product, quantity = 1) {
+    const cartItem = this.items.find(item => item.product.id === product.id);
+    if (cartItem) {
+      cartItem.quantity += quantity;
+    } else {
+      this.items.push(new ShoppingCartItem(product, quantity));
+    }
+    this.renderCart();
+  }
+
+  removeItem(productId) {
+    this.items = this.items.filter(item => item.product.id !== productId);
+    this.renderCart();
+  }
+
+  getTotalItems() {
+    return this.items.reduce((total, item) => total + item.quantity, 0);
+  }
+
+  getTotalPrice() {
+    return this.items.reduce((total, item) => total + item.getTotalPrice(), 0).toFixed(2);
+  }
+
+  renderCart() {
+    cartItems.innerHTML = ""; // Clear previous items
+
+    this.items.forEach((item) => {
+      const itemElement = document.createElement("div");
+      itemElement.classList.add("item");
+
+      itemElement.innerHTML = `
+        <div class="name">${item.product.name}</div>
+        <div class="price">${item.product.price.toFixed(2)} DH</div>
+        <div class="quantity">
+          <button class="btn minus">-</button>
+          ${item.quantity}
+          <button class="btn plus">+</button>
+        </div>
+        <i class="like-btn fas fa-heart"></i>
+        <button class="delete-btn">Delete</button>
+      `;
+
+      const minusBtn = itemElement.querySelector(".minus");
+      const plusBtn = itemElement.querySelector(".plus");
+      const deleteBtn = itemElement.querySelector(".delete-btn");
+
+      minusBtn.addEventListener("click", () => {
+        if (item.quantity > 1) {
+          item.quantity--;
+          this.renderCart();
+        }
+      });
+
+      plusBtn.addEventListener("click", () => {
+        item.quantity++;
+        this.renderCart();
+      });
+
+      deleteBtn.addEventListener("click", () => {
+        this.removeItem(item.product.id);
+      });
+
+      cartItems.appendChild(itemElement);
+    });
+
+    totalDisplay.textContent = `Total: ${this.getTotalPrice()} DH`;
+
+    this.renderFavorites();
+  }
+
+  renderFavorites() {
     favoriteItems.innerHTML = ""; // Clear previous items
 
-    const likedItems = items.filter(item => item.liked);
-
-    likedItems.forEach(item => {
-        // Create a new item element
-        const itemElement = document.createElement("div");
-        itemElement.classList.add("item");
-
-        // Set the item's HTML content (including dynamic values)
-        itemElement.innerHTML = `
-            <div class="name">${item.name}</div>
-            <div class="price">${item.price.toFixed(2)} DH</div>
-        `;
-
-        favoriteItems.appendChild(itemElement); // Add item to the favorites
+    this.items.filter(item => item.liked).forEach(item => {
+      const itemElement = document.createElement("div");
+      itemElement.classList.add("item");
+      itemElement.innerHTML = `
+        <div class="name">${item.product.name}</div>
+        <div class="price">${item.product.price.toFixed(2)} DH</div>
+      `;
+      favoriteItems.appendChild(itemElement);
     });
+  }
 }
 
-// Initial rendering of the cart when the page loads
-renderCart();
+// Initialize the cart
+const cart = new ShoppingCart();
+
+// Sample products
+const product1 = new Product(1, "Product 1", 19.99);
+const product2 = new Product(2, "Product 2", 9.99);
+
+// Add items to the cart
+cart.addItem(product1);
+cart.addItem(product2, 2);
+
+// Initial rendering of the cart
+cart.renderCart();
